@@ -1,0 +1,7 @@
+nodal-linker-454405-d9-firebase-adminsdk-fbsvc-f3ac6f886d.json
+nodal-linker-454405-d9-firebase-adminsdk-fbsvc-f3ac6f886d.json
+node_modules
+node_modules/
+.env
+.DS_Store
+*.log

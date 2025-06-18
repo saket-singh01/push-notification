@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Firebase FCM Token Retrieval</title>
+    <script src=""></script>
+    <script src=""></script>
+    <style>
+      body {
+        font-family: sans-serif;
+      }
+      #tokenDisplay {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        white-space: pre-wrap; /* Preserve line breaks */
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Firebase FCM Token Retrieval</h1>
+    <button id="requestPermission">Request Notification Permission</button>
+    <div id="tokenDisplay"></div>
+
+    <script>
+      // Your Firebase project configuration
+      const firebaseConfig = {
+        apiKey: "",
+        authDomain: "",
+        projectId: "",
+        storageBucket: "",
+        messagingSenderId: "",
+        appId: "",
+        measurementId: "",
+      };
+
+      // Initialize Firebase
+      const app = firebase.initializeApp(firebaseConfig);
+      const messaging = firebase.messaging();
+      const tokenDisplay = document.getElementById("tokenDisplay");
+      const requestPermissionButton =
+        document.getElementById("requestPermission");
+
+      function updateTokenDisplay(token) {
+        tokenDisplay.textContent = `FCM Registration Token:\n${
+          token || "No token received."
+        }`;
+      }
+
+      // Register the service worker
+      navigator.serviceWorker
+        .register("/firebase-messaging-sw.js")
+        .then((registration) => {
+          console.log("Service worker registered:", registration);
+          // Ensure messaging object is available before calling useServiceWorker
+          const messaging = firebase.messaging();
+          messaging.useServiceWorker(registration);
+          return messaging.getToken(); // Get token after successful registration
+        })
+        .then((currentToken) => {
+          if (currentToken) {
+            updateTokenDisplay(currentToken);
+            console.log("FCM Registration Token:", currentToken);
+            // At this point, in a real application, you would send this token to your server.
+          } else {
+            // Show permission request UI
+            console.log(
+              "No registration token available. Request permission to generate one."
+            );
+            updateTokenDisplay(
+              "No registration token available. Request permission."
+            );
+          }
+        })
+        .catch((err) => {
+          console.error(
+            "An error occurred while registering the service worker or retrieving the token. ",
+            err
+          );
+          // updateTokenDisplay(`Error: ${err.message}`);
+          updateTokenDisplay(`Msg:Click to generate token`);
+        });
+
+      // Handle permission request button click
+      requestPermissionButton.addEventListener("click", async () => {
+        console.log("Requesting notification permission...");
+        const permissionResult = await Notification.requestPermission();
+        if (permissionResult === "granted") {
+          console.log("Notification permission granted.");
+          messaging
+            .getToken()
+            .then((currentToken) => {
+              if (currentToken) {
+                updateTokenDisplay(currentToken);
+                console.log("FCM Registration Token:", currentToken);
+                // Send token to server
+              } else {
+                console.log("Can not retrieve token after permission granted.");
+                updateTokenDisplay(
+                  "Can not retrieve token after permission granted."
+                );
+              }
+            })
+            .catch((err) => {
+              console.log(
+                "An error occurred while retrieving token after permission granted. ",
+                err
+              );
+              updateTokenDisplay(`Error: ${err.message}`);
+            });
+        } else {
+          console.log("Permission denied for notifications!");
+          updateTokenDisplay("Permission denied for notifications.");
+        }
+      });
+
+      // Handle receiving foreground messages
+      messaging.onMessage((payload) => {
+        console.log("Message received:", payload);
+        if (payload.notification) {
+          new Notification(payload.notification.title, {
+            body: payload.notification.body,
+          });
+        }
+      });
+
+      // Handle token refresh
+      messaging.onIdTokenChanged((newToken) => {
+        console.log("FCM token refreshed:", newToken);
+        updateTokenDisplay(newToken);
+        // Send the new token to your server
+      });
+    </script>
+  </body>
+</html>
